@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#111318" />
+    <title>딩가딩 지역예선 우수참여자 평가</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23111318'/%3E%3Cpath d='M14 14h36v8H24v8h21v8H24v12H14z' fill='%232bb4a4'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles-plan-b.css" />
+    <script src="./data.js" defer></script>
+    <script src="./app-plan-b.js" defer></script>
+  </head>
+  <body class="plan-b is-auth-locked">
+    <section class="auth-gate" id="auth-gate" aria-labelledby="auth-title">
+      <div class="auth-panel">
+        <div class="auth-brand">
+          <span class="brand-mark" aria-hidden="true">D</span>
+          <div>
+            <p class="eyebrow">2026 딩가딩프로젝트</p>
+            <h1 id="auth-title">지역예선 우수참여자 평가</h1>
+            <span class="version-badge">V_1.0</span>
+          </div>
+        </div>
+        <form class="auth-form" id="auth-form">
+          <label class="auth-field">
+            <span>입장 비밀번호</span>
+            <input id="auth-password" type="password" autocomplete="current-password" inputmode="latin" placeholder="비밀번호 입력" required />
+          </label>
+          <p class="auth-feedback" id="auth-feedback" role="alert" aria-live="polite"></p>
+          <button class="primary-button auth-submit" type="submit">입장하기</button>
+        </form>
+      </div>
+    </section>
+
+    <header class="app-topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">D</span>
+        <div class="brand-copy">
+          <p>2026 딩가딩프로젝트</p>
+          <h1>지역예선 우수참여자 평가 <span class="version-badge">V_1.0</span></h1>
+        </div>
+      </div>
+      <div class="topbar-actions" aria-label="평가 데이터 관리">
+        <button class="icon-button" id="export-xlsx" type="button" title="Excel 내보내기" aria-label="Excel 내보내기">
+          <i data-lucide="table"></i>
+        </button>
+        <button class="icon-button" id="export-json" type="button" title="백업 내보내기" aria-label="백업 내보내기">
+          <i data-lucide="download"></i>
+        </button>
+        <button class="icon-button" id="import-json" type="button" title="백업 가져오기" aria-label="백업 가져오기">
+          <i data-lucide="upload"></i>
+        </button>
+        <input class="visually-hidden" id="import-file" type="file" accept="application/json,.json" />
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="screen is-active" id="region-screen" aria-labelledby="region-title">
+        <div class="screen-head">
+          <p class="eyebrow">문항 중심 평가</p>
+          <h2 id="region-title">평가할 지역예선을 선택하세요</h2>
+        </div>
+        <div class="region-grid" id="region-grid">
+          <div class="empty-state startup-fallback">
+            화면이 비어 있으면 iPhone의 파일 미리보기가 아니라 Safari에서 직접 열어주세요.
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="question-screen" aria-labelledby="question-title">
+        <div class="screen-head with-back">
+          <button class="back-button" id="back-to-regions" type="button">
+            <i data-lucide="chevron-left"></i>
+            <span>지역</span>
+          </button>
+          <div class="question-title-wrap">
+            <p class="eyebrow" id="question-eyebrow">지역예선</p>
+            <div class="question-title-row">
+              <h2 id="question-title">문항별 평가</h2>
+              <button class="participant-view-button" id="show-participants" type="button">참가자 보기</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="region-summary" id="plan-region-summary"></div>
+
+        <div class="filter-panel question-toolbar" id="question-toolbar">
+          <label class="search-field">
+            <i data-lucide="search"></i>
+            <span class="visually-hidden">검색</span>
+            <input id="question-search" type="search" autocomplete="off" placeholder="문항, 이름, 팀 검색" />
+          </label>
+
+          <div class="chip-row" aria-label="문항 필터">
+            <button class="filter-chip is-active" type="button" data-question-role-filter="all">전체</button>
+            <button class="filter-chip" type="button" data-question-role-filter="supporter">서포터즈</button>
+            <button class="filter-chip" type="button" data-question-role-filter="facilitator">퍼실리테이터</button>
+            <button class="filter-chip" type="button" data-question-role-filter="team">팀 입력</button>
+          </div>
+        </div>
+
+        <div class="question-list" id="question-list"></div>
+        <div class="team-manager" id="team-manager" hidden></div>
+        <div class="participant-browser" id="participant-browser" hidden></div>
+        <div class="participant-report" id="participant-report" hidden></div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="modal-backdrop" id="manual-score-modal" hidden>
+      <form class="modal-panel score-modal-panel" id="manual-score-form" role="dialog" aria-modal="true" aria-labelledby="manual-score-title">
+        <div>
+          <p class="eyebrow" id="manual-score-eyebrow">기타 종합 평가</p>
+          <h2 id="manual-score-title">참가자 점수 조정</h2>
+          <p class="modal-copy" id="manual-score-copy">해당 영역 점수와 종합 의견을 입력하세요.</p>
+        </div>
+        <div class="modal-score-control">
+          <button class="manual-step" id="manual-score-minus" type="button" data-modal-score-step="-1">-</button>
+          <label class="modal-score-field">
+            <span>점수</span>
+            <input id="manual-score-input" type="number" min="0" max="10" step="1" required />
+          </label>
+          <button class="manual-step" id="manual-score-plus" type="button" data-modal-score-step="1">+</button>
+        </div>
+        <div class="manual-presets modal-presets" id="manual-score-presets" aria-label="빠른 점수"></div>
+        <label class="modal-field">
+          <span>종합 의견</span>
+          <textarea id="manual-score-note" rows="3" placeholder="현장 종합 의견"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button class="ghost-button" id="manual-score-cancel" type="button">취소</button>
+          <button class="primary-button" type="submit">저장</button>
+        </div>
+      </form>
+    </div>
+    <div class="modal-backdrop" id="evaluator-modal" hidden>
+      <form class="modal-panel" id="evaluator-form" role="dialog" aria-modal="true" aria-labelledby="evaluator-title">
+        <div>
+          <p class="eyebrow">내보내기</p>
+          <h2 id="evaluator-title">평가자 이름 입력</h2>
+          <p class="modal-copy">파일명에 사용할 이름을 입력해주세요.</p>
+        </div>
+        <label class="modal-field">
+          <span>평가자</span>
+          <input id="evaluator-name" type="text" autocomplete="name" placeholder="예: 홍길동" required />
+        </label>
+        <div class="modal-actions">
+          <button class="ghost-button" id="evaluator-cancel" type="button">취소</button>
+          <button class="primary-button" type="submit">내보내기</button>
+        </div>
+      </form>
+    </div>
+  </body>
+</html>
