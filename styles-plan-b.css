@@ -175,6 +175,12 @@
   gap: 8px;
 }
 
+.question-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .question-title-row h2 {
   min-width: 0;
 }
@@ -196,6 +202,29 @@
   border-color: var(--pa-black);
   background: var(--pa-black);
   color: #fff;
+}
+
+.participant-view-button-compact {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 0.66rem;
+}
+
+@media (max-width: 480px) {
+  .question-title-row {
+    align-items: center;
+    gap: 6px;
+  }
+
+  .question-title-actions {
+    gap: 5px;
+  }
+
+  .participant-view-button-compact {
+    min-height: 26px;
+    padding: 0 6px;
+    font-size: 0.6rem;
+  }
 }
 
 .plan-b .back-button,
@@ -947,3 +976,4 @@
     justify-content: flex-start;
   }
 }
+

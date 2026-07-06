@@ -2,6 +2,23 @@ const DATA = window.DINGADING_DATA;
 const STORAGE_KEY = "dingading-local-prelim-evaluation-v1";
 const AUTH_STORAGE_KEY = "dingading-local-prelim-auth-v1";
 const AUTH_PASSWORD = "PEARLSEED";
+const SUNCHEON_DEFAULT_TEAM_MAP = {
+  "kim-taeyoung": [1],
+  "oh-sowon": [2],
+  "im-hayeon": [3, 4],
+  "kang-seunghyeon": [5, 6],
+  "park-doyun": [7],
+  "no-geonpyo": [8],
+  "lee-jimin": [9],
+  "kim-doyeon": [10],
+  "lee-jisu": [11],
+  "jeong-wooseong": [12],
+  "eom-takgyeong": [13],
+  "kim-sangyun": [14],
+  "kim-namhun": [15],
+  "son-juhee": [16],
+  "kim-boguk": [17]
+};
 
 let store = loadStore();
 let appStarted = false;
@@ -213,6 +230,7 @@ function startApp() {
   $("#team-manager").addEventListener("click", handleTeamClick);
   $("#team-manager").addEventListener("keydown", handleTeamKeydown);
   $("#show-participants").addEventListener("click", handleParticipantViewToggle);
+  $("#show-team-manager").addEventListener("click", handleTeamManagerToggle);
   $("#participant-browser").addEventListener("click", handleParticipantBrowserClick);
   $("#participant-report").addEventListener("click", handleParticipantReportClick);
   $("#manual-score-form").addEventListener("submit", handleManualScoreSubmit);
@@ -224,7 +242,7 @@ function startApp() {
   });
   $("#export-json").addEventListener("click", () => openEvaluatorModal("json"));
   $("#export-xlsx").addEventListener("click", () => openEvaluatorModal("xlsx"));
-  $("#import-json").addEventListener("click", () => $("#import-file").click());
+  // Import is triggered by the native file label in the header.
   $("#import-file").addEventListener("change", importJson);
   $("#evaluator-form").addEventListener("submit", handleEvaluatorSubmit);
   $("#evaluator-cancel").addEventListener("click", closeEvaluatorModal);
@@ -324,11 +342,46 @@ function setTeams(regionId, participantId, teams) {
   saveStore({ silent: true });
 }
 
+function seedDefaultSuncheonTeams() {
+  const regionId = "jeonnam-suncheon";
+  if (ui.regionId !== regionId) return;
+
+  let changed = false;
+  Object.keys(SUNCHEON_DEFAULT_TEAM_MAP).forEach((participantId) => {
+    const key = getEvalKey(regionId, participantId);
+    if (Object.prototype.hasOwnProperty.call(store.teams, key)) return;
+    store.teams[key] = SUNCHEON_DEFAULT_TEAM_MAP[participantId].map((teamNo) => `${teamNo}조`);
+    changed = true;
+  });
+
+  if (changed) saveStore({ silent: true });
+}
+
 function normalizeTeam(value) {
   const cleaned = String(value || "").trim().replace(/\s+/g, "");
   if (!cleaned) return "";
   if (/^\d+$/.test(cleaned)) return `${cleaned}조`;
   return cleaned;
+}
+
+function getTeamSortRank(regionId, entry) {
+  if (!entry || entry.role !== "supporter") return Number.MAX_VALUE;
+  const teams = getTeams(regionId, entry.participantId).map((team) => normalizeTeam(team)).filter(Boolean);
+  const numbers = teams
+    .map((team) => Number(String(team).replace(/[^\d]/g, "")))
+    .filter((team) => Number.isFinite(team) && team > 0)
+    .sort((a, b) => a - b);
+  return numbers.length ? numbers[0] : Number.MAX_VALUE;
+}
+
+function sortEntriesByTeam(regionId, entries) {
+  const collator = new Intl.Collator("ko-KR");
+  return entries.slice().sort((a, b) => {
+    const rankA = getTeamSortRank(regionId, a);
+    const rankB = getTeamSortRank(regionId, b);
+    if (rankA !== rankB) return rankA - rankB;
+    return collator.compare(a.name, b.name);
+  });
 }
 
 function showScreen(screenId) {
@@ -357,6 +410,7 @@ function showQuestions(regionId) {
   ui.openQuestion = "";
   ui.viewMode = "questions";
   ui.participantId = null;
+  seedDefaultSuncheonTeams();
   $("#question-search").value = "";
   $$(".filter-chip").forEach((chip) => chip.classList.toggle("is-active", chip.dataset.questionRoleFilter === "all"));
   renderQuestionScreen();
@@ -410,25 +464,32 @@ function renderQuestionScreen() {
   $("#question-title").textContent = `${region.name} 문항별 평가`;
   $("#question-eyebrow").textContent = region.date ? formatDate(region.date) : "지역예선";
   const participantButton = $("#show-participants");
-  participantButton.textContent = ui.viewMode === "questions" ? "참가자 보기" : "문항 보기";
-  participantButton.classList.toggle("is-active", ui.viewMode !== "questions");
+  const teamManagerButton = $("#show-team-manager");
+  participantButton.textContent = ui.viewMode === "participants" ? "문항 보기" : "참가자 보기";
+  participantButton.classList.toggle("is-active", ui.viewMode === "participants");
+  teamManagerButton.textContent = ui.viewMode === "team-manager" ? "문항 보기" : "팀 입력";
+  teamManagerButton.classList.toggle("is-active", ui.viewMode === "team-manager");
   renderPlanSummary(region);
 
   $("#question-list").hidden = true;
   $("#team-manager").hidden = true;
   $("#participant-browser").hidden = true;
   $("#participant-report").hidden = true;
+  $("#question-list").textContent = "";
+  $("#team-manager").textContent = "";
+  $("#participant-browser").textContent = "";
+  $("#participant-report").textContent = "";
   $("#question-toolbar").hidden = ui.viewMode !== "questions";
 
   if (ui.viewMode === "participants") {
     $("#participant-browser").hidden = false;
     renderParticipantBrowser(region);
+  } else if (ui.viewMode === "team-manager") {
+    $("#team-manager").hidden = false;
+    renderTeamManager(region);
   } else if (ui.viewMode === "participant-detail") {
     $("#participant-report").hidden = false;
     renderParticipantReport(region);
-  } else if (ui.roleFilter === "team") {
-    $("#team-manager").hidden = false;
-    renderTeamManager(region);
   } else {
     $("#question-list").hidden = false;
     renderQuestionList(region);
@@ -830,8 +891,12 @@ function renderQuestionBody(region, question) {
 function getVisibleEntriesForQuestion(region, question) {
   const entries = getEntriesByRole(region, question.role);
   const query = normalizeSearch(ui.query);
-  if (!query || normalizeSearch(questionText(question)).includes(query)) return entries;
-  return entries.filter((entry) => participantMatches(region, entry, query));
+  const visible =
+    !query || normalizeSearch(questionText(question)).includes(query)
+      ? entries
+      : entries.filter((entry) => participantMatches(region, entry, query));
+  if (question.role !== "supporter") return visible;
+  return sortEntriesByTeam(region.id, visible);
 }
 
 function participantMatches(region, entry, query) {
@@ -942,7 +1007,9 @@ function renderCompletionBody(region, entries) {
 function renderTeamManager(region) {
   const manager = $("#team-manager");
   const query = normalizeSearch(ui.query);
-  const supporters = getEntriesByRole(region, "supporter").filter((entry) => !query || participantMatches(region, entry, query));
+  const supporters = sortEntriesByTeam(region.id, getEntriesByRole(region, "supporter")).filter(
+    (entry) => !query || participantMatches(region, entry, query)
+  );
   manager.textContent = "";
 
   if (!supporters.length) {
@@ -1028,11 +1095,26 @@ function handleParticipantViewToggle() {
     ui.viewMode = "participants";
     ui.participantId = null;
   } else {
-    ui.viewMode = "questions";
+    ui.viewMode = ui.viewMode === "participants" ? "questions" : "participants";
     ui.participantId = null;
     ui.roleFilter = "all";
     $$(".filter-chip").forEach((chip) => chip.classList.toggle("is-active", chip.dataset.questionRoleFilter === "all"));
   }
+  renderQuestionScreen();
+}
+
+function handleTeamManagerToggle() {
+  if (ui.viewMode === "team-manager") {
+    ui.viewMode = "questions";
+    ui.roleFilter = "all";
+  } else {
+    ui.viewMode = "team-manager";
+    ui.participantId = null;
+    ui.openQuestion = "";
+  }
+  ui.query = "";
+  $("#question-search").value = "";
+  $$(".filter-chip").forEach((chip) => chip.classList.toggle("is-active", chip.dataset.questionRoleFilter === "all"));
   renderQuestionScreen();
 }
 
@@ -1789,3 +1871,4 @@ function hydrateIcons() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+

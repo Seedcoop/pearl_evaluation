@@ -51,10 +51,10 @@
         <button class="icon-button" id="export-json" type="button" title="백업 내보내기" aria-label="백업 내보내기">
           <i data-lucide="download"></i>
         </button>
-        <button class="icon-button" id="import-json" type="button" title="백업 가져오기" aria-label="백업 가져오기">
+        <label class="icon-button" id="import-json" for="import-file" title="백업 파일 가져오기" aria-label="백업 파일 가져오기">
           <i data-lucide="upload"></i>
-        </button>
-        <input class="visually-hidden" id="import-file" type="file" accept="application/json,.json" />
+        </label>
+        <input class="visually-hidden" id="import-file" type="file" accept=".json,.txt,text/json,application/json" />
       </div>
     </header>
 
@@ -77,13 +77,16 @@
             <i data-lucide="chevron-left"></i>
             <span>지역</span>
           </button>
-          <div class="question-title-wrap">
+        <div class="question-title-wrap">
             <p class="eyebrow" id="question-eyebrow">지역예선</p>
-            <div class="question-title-row">
-              <h2 id="question-title">문항별 평가</h2>
-              <button class="participant-view-button" id="show-participants" type="button">참가자 보기</button>
+        <div class="question-title-row">
+            <h2 id="question-title">문항별 평가</h2>
+            <div class="question-title-actions">
+              <button class="participant-view-button participant-view-button-compact" id="show-participants" type="button">참가자 보기</button>
+              <button class="participant-view-button participant-view-button-compact" id="show-team-manager" type="button">팀 입력</button>
             </div>
           </div>
+        </div>
         </div>
 
         <div class="region-summary" id="plan-region-summary"></div>
@@ -99,7 +102,6 @@
             <button class="filter-chip is-active" type="button" data-question-role-filter="all">전체</button>
             <button class="filter-chip" type="button" data-question-role-filter="supporter">서포터즈</button>
             <button class="filter-chip" type="button" data-question-role-filter="facilitator">퍼실리테이터</button>
-            <button class="filter-chip" type="button" data-question-role-filter="team">팀 입력</button>
           </div>
         </div>
 
@@ -156,3 +158,4 @@
     </div>
   </body>
 </html>
+
