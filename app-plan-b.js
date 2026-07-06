@@ -242,7 +242,11 @@ function startApp() {
   });
   $("#export-json").addEventListener("click", () => openEvaluatorModal("json"));
   $("#export-xlsx").addEventListener("click", () => openEvaluatorModal("xlsx"));
-  // Import is triggered by the native file label in the header.
+  // Import is triggered by the topbar import button.
+  $("#import-json").addEventListener("click", () => {
+    const fileInput = $("#import-file");
+    if (fileInput) fileInput.click();
+  });
   $("#import-file").addEventListener("change", importJson);
   $("#evaluator-form").addEventListener("submit", handleEvaluatorSubmit);
   $("#evaluator-cancel").addEventListener("click", closeEvaluatorModal);
@@ -654,21 +658,22 @@ function renderParticipantReportSection(section, evaluation, sectionScore = { sc
         <strong>${escapeHtml(section.title)}</strong>
         <span>${sectionScore.score}/${section.cap}</span>
       </header>
-      ${(section.items || [])
-        .map((item) => {
-          const state = (evaluation.items && evaluation.items[item.code]) || "";
-          const stateText = getStateText(item, state);
-          const earned = scoreItem(item, state);
-          const isPositive = item.type === "deduct" ? stateText === "Y" : stateText === "Y";
-          return `
-            <div class="report-row">
-              <span class="report-code">${escapeHtml(item.code)}</span>
-              <span class="report-question">${escapeHtml(item.label)}</span>
-              <span class="report-state ${isPositive ? "is-y" : stateText === "N" ? "is-n" : ""}">${escapeHtml(stateText)}</span>
-              <span class="report-score">${earned}/${item.points}</span>
-            </div>
-          `;
-        })
+        ${(section.items || [])
+          .map((item) => {
+            const state = (evaluation.items && evaluation.items[item.code]) || "";
+            const stateText = getStateText(item, state);
+            const earned = scoreItem(item, state);
+            const stateClass = getStateClass(item, state);
+            const maxPoint = getItemPointLimit(item);
+            return `
+              <div class="report-row">
+                <span class="report-code">${escapeHtml(item.code)}</span>
+                <span class="report-question">${escapeHtml(item.label)}</span>
+                <span class="report-state ${stateClass}">${escapeHtml(stateText)}</span>
+                <span class="report-score">${earned}/${maxPoint}</span>
+              </div>
+            `;
+          })
         .join("")}
     </section>
   `;
@@ -809,9 +814,10 @@ function questionTitle(question) {
 
 function questionMeta(question) {
   if (question.type === "item") {
+    const pointsText = question.item.type === "count" ? `최대 ${getItemPointLimit(question.item)}점` : `${question.item.points}점`;
     return `
       <span>${escapeHtml(DATA.roles[question.role])}</span>
-      <span>${question.item.points}점</span>
+      <span>${pointsText}</span>
       <span>${escapeHtml(question.item.method)}</span>
     `;
   }
@@ -838,6 +844,12 @@ function renderQuestionStats(region, question) {
         <span class="stat-pill is-n">N ${counts.n}</span>
       `;
     }
+    if (question.item.type === "count") {
+      return `
+        <span class="stat-pill is-y">총 ${counts.sum}건</span>
+        <span class="stat-pill is-n">미입력 ${counts.blank}명</span>
+      `;
+    }
     return `
       <span class="stat-pill is-y">Y ${counts.y}</span>
       <span class="stat-pill is-n">N ${counts.n}</span>
@@ -861,6 +873,16 @@ function getItemCounts(region, entries, item) {
       if (item.type === "deduct") {
         if (state === "n") counts.n += 1;
         else counts.y += 1;
+      } else if (item.type === "count") {
+        const count = getItemCount(item, state);
+        if (count > 0) {
+          counts.y += 1;
+          counts.sum += count;
+        } else if (state === "") {
+          counts.blank += 1;
+        } else {
+          counts.n += 1;
+        }
       } else if (state === "y") {
         counts.y += 1;
       } else if (state === "n") {
@@ -870,7 +892,7 @@ function getItemCounts(region, entries, item) {
       }
       return counts;
     },
-    { y: 0, n: 0, blank: 0 }
+    { y: 0, n: 0, blank: 0, sum: 0 }
   );
 }
 
@@ -935,6 +957,12 @@ function getTeamSummary(regionId, participantId) {
 }
 
 function getStateClass(item, state) {
+  if (item.type === "count") {
+    const count = getItemCount(item, state);
+    if (state && count > 0) return "is-y";
+    if (state && count === 0) return "is-n";
+    return "";
+  }
   if (item.type === "deduct") return state === "n" ? "is-n" : "is-y";
   if (state === "y") return "is-y";
   if (state === "n") return "is-n";
@@ -942,6 +970,12 @@ function getStateClass(item, state) {
 }
 
 function getStateText(item, state) {
+  if (item.type === "count") {
+    const count = getItemCount(item, state);
+    if (!count) return "-";
+    if (Array.isArray(item.stateLabels) && item.stateLabels[count - 1]) return item.stateLabels[count - 1];
+    return `${count}건`;
+  }
   if (item.type === "deduct") return state === "n" ? "N" : "Y";
   if (state === "y") return "Y";
   if (state === "n") return "N";
@@ -1081,7 +1115,39 @@ function scoreItem(item, state) {
   if (item.type === "deduct") {
     return state === "n" ? 0 : item.points;
   }
+  if (item.type === "count") {
+    return getItemCountScore(item, state);
+  }
   return state === "y" ? item.points : 0;
+}
+
+function getItemCount(item, state) {
+  if (item.type !== "count") return 0;
+  if (state === "y") return 1;
+  const count = Number(state);
+  if (!Number.isFinite(count) || count <= 0) return 0;
+  return Math.min(Math.floor(count), getItemMaxCount(item));
+}
+
+function getItemMaxCount(item) {
+  const maxCount = Number(item.maxCount);
+  if (Number.isFinite(maxCount) && maxCount > 0) return Math.floor(maxCount);
+  if (Array.isArray(item.points)) return item.points.length;
+  return 3;
+}
+
+function getItemCountScore(item, state) {
+  const count = getItemCount(item, state);
+  if (!count) return 0;
+  if (!Array.isArray(item.points) || !item.points.length) return 0;
+  return item.points[Math.min(count, item.points.length) - 1];
+}
+
+function getItemPointLimit(item) {
+  if (!item) return 0;
+  if (item.type !== "count") return Number(item.points) || 0;
+  if (!Array.isArray(item.points) || !item.points.length) return 0;
+  return item.points[item.points.length - 1];
 }
 
 function handleRegionClick(event) {
@@ -1282,7 +1348,10 @@ function toggleItemState(region, button) {
   const current = evaluation.items[code] || "";
   let next = "";
 
-  if (item.type === "deduct") {
+  if (item.type === "count") {
+    const nextCount = getItemCount(item, current) >= getItemMaxCount(item) ? 0 : getItemCount(item, current) + 1;
+    next = nextCount ? String(nextCount) : "";
+  } else if (item.type === "deduct") {
     next = current === "n" ? "" : "n";
   } else if (!current) {
     next = "y";
@@ -1490,6 +1559,7 @@ function exportItemState(role, code, state) {
   const item = findRubricItem(role, code);
   if (!item) return "";
   if (item.type === "deduct") return state === "n" ? "N" : "Y";
+  if (item.type === "count") return getItemCount(item, state) ? String(getItemCount(item, state)) : "";
   if (state === "y") return "Y";
   if (state === "n") return "N";
   return "";
@@ -1762,6 +1832,16 @@ function importJson(event) {
   const file = event.target.files && event.target.files[0];
   event.target.value = "";
   if (!file) return;
+  const fileName = String(file.name || "").toLowerCase();
+  const isJsonLike =
+    file.type === "application/json" ||
+    file.type === "text/plain" ||
+    fileName.endsWith(".json") ||
+    fileName.endsWith(".txt");
+  if (!isJsonLike) {
+    showToast("백업 파일(.json/.txt)만 불러올 수 있습니다");
+    return;
+  }
 
   const reader = new FileReader();
   reader.onload = () => {

@@ -188,11 +188,9 @@ window.DINGADING_DATA = {
           title: "② 프로그램 운영 기여도",
           cap: 30,
           items: [
-            { code: "SB1", type: "gain", points: 10, label: "Buildbox 실질적 문제 해결 1건 이상", method: "참가자 기반 검증" },
-            { code: "SB2", type: "gain", points: 5, label: "Buildbox 문제 해결 3건 이상 (A1 포함)", method: "참가자 기반 검증" },
-            { code: "SB3", type: "gain", points: 5, label: "스스로 못 푼 문제를 퍼실리테이터에 적절히 에스컬레이션", method: "현장관찰" },
+            { code: "SB1", type: "count", points: [5, 10, 15], maxCount: 3, label: "문제 해결 건 수", method: "참가자 기반 검증" },
+            { code: "SB3", type: "count", points: [0, 5, 10], maxCount: 3, stateLabels: ["배점없음", "에스컬레이션", "혼자 처리"], label: "문제 처리 수준", method: "현장관찰" },
             { code: "SB4", type: "gain", points: 5, label: "담당 팀 게임을 예선 제출 가능 상태까지 완성 지원", method: "제출물 확인" },
-            { code: "SB5", type: "gain", points: 5, label: "동료 서포터즈·퍼실과 정보 공유·협력", method: "현장관찰" }
           ]
         },
         {
@@ -234,8 +232,7 @@ window.DINGADING_DATA = {
           title: "② 프로그램 운영 기여도",
           cap: 30,
           items: [
-            { code: "FB1", type: "gain", points: 10, label: "서포터즈가 못 푼 심화 이슈 1건 이상 해결", method: "참가자 기반 검증" },
-            { code: "FB2", type: "gain", points: 10, label: "심화 이슈 3건 이상 해결 (FB1 포함)", method: "참가자 기반 검증" },
+            { code: "FB1", type: "count", points: [6, 13, 20], maxCount: 3, label: "문제 해결 건 수", method: "참가자 기반 검증" },
             { code: "FB3", type: "gain", points: 5, label: "현장 기술 리스크를 선제 발견·조치", method: "현장관찰/기록" },
             { code: "FB4", type: "gain", points: 3, label: "현장 이슈를 운영사무국에 보고·연계", method: "보고기록" },
             { code: "FB5", type: "gain", points: 2, label: "돌발 상황에서 조율 역할 수행", method: "현장관찰" }
