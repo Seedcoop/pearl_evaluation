@@ -242,11 +242,7 @@ function startApp() {
   });
   $("#export-json").addEventListener("click", () => openEvaluatorModal("json"));
   $("#export-xlsx").addEventListener("click", () => openEvaluatorModal("xlsx"));
-  // Import is triggered by the topbar import button.
-  $("#import-json").addEventListener("click", () => {
-    const fileInput = $("#import-file");
-    if (fileInput) fileInput.click();
-  });
+  $("#import-json").addEventListener("keydown", handleImportKeydown);
   $("#import-file").addEventListener("change", importJson);
   $("#evaluator-form").addEventListener("submit", handleEvaluatorSubmit);
   $("#evaluator-cancel").addEventListener("click", closeEvaluatorModal);
@@ -1863,6 +1859,13 @@ function importJson(event) {
     }
   };
   reader.readAsText(file);
+}
+
+function handleImportKeydown(event) {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  const fileInput = $("#import-file");
+  if (fileInput) fileInput.click();
 }
 
 function rerenderCurrentScreen() {
