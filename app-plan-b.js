@@ -368,13 +368,13 @@ function normalizeTeam(value) {
 }
 
 function getTeamSortRank(regionId, entry) {
-  if (!entry || entry.role !== "supporter") return Number.MAX_VALUE;
+  if (!entry || entry.role !== "supporter") return Number.NEGATIVE_INFINITY;
   const teams = getTeams(regionId, entry.participantId).map((team) => normalizeTeam(team)).filter(Boolean);
   const numbers = teams
     .map((team) => Number(String(team).replace(/[^\d]/g, "")))
     .filter((team) => Number.isFinite(team) && team > 0)
     .sort((a, b) => a - b);
-  return numbers.length ? numbers[0] : Number.MAX_VALUE;
+  return numbers.length ? numbers[numbers.length - 1] : Number.NEGATIVE_INFINITY;
 }
 
 function sortEntriesByTeam(regionId, entries) {
