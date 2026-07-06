@@ -228,6 +228,10 @@
     align-items: start;
   }
 
+  .question-title-wrap {
+    position: relative;
+  }
+
   .question-title-row,
   .question-title-actions {
     width: 100%;
@@ -236,23 +240,25 @@
   .question-title-row {
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
-    gap: 6px;
+    gap: 0;
   }
 
   .question-title-actions {
-    display: grid;
-    grid-template-columns: 1fr;
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    justify-content: flex-end;
     gap: 4px;
-    width: min(100%, 124px);
-    max-width: 100%;
-    justify-self: start;
-    justify-items: stretch;
+    width: auto;
   }
 
   .participant-view-button-compact {
-    min-height: 26px;
-    padding: 0 6px;
-    font-size: 0.6rem;
+    min-height: 24px;
+    padding: 0 7px;
+    border-radius: 7px;
+    font-size: 0.58rem;
+    line-height: 1;
   }
 
   .question-title-row h2 {
@@ -266,8 +272,8 @@
 
   .participant-view-button-team {
     min-height: 24px;
-    padding: 0 5px;
-    font-size: 0.56rem;
+    padding: 0 7px;
+    font-size: 0.58rem;
   }
 }
 
@@ -596,6 +602,64 @@
 .judge-pill.is-complete {
   border-color: rgba(23, 132, 84, 0.52);
   background: #eaf8f0;
+}
+
+.level-choice-pill {
+  display: grid;
+  gap: 7px;
+  min-height: 72px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8faf9;
+}
+
+.level-choice-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.level-choice-button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--pa-ink);
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1.16;
+  text-align: center;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.level-choice-button.is-escalation {
+  border-color: #ead38a;
+  background: #fff8df;
+  color: #6a5000;
+}
+
+.level-choice-button.is-solo {
+  border-color: #9bd7b3;
+  background: #ecf8f0;
+  color: var(--success);
+}
+
+.level-choice-button.is-escalation.is-selected {
+  border-color: #c49a24;
+  background: #ffe08a;
+  color: #4b3b08;
+}
+
+.level-choice-button.is-solo.is-selected {
+  border-color: var(--success);
+  background: #dff5e9;
+  color: var(--success);
 }
 
 .judge-pill-name {

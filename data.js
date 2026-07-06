@@ -189,7 +189,7 @@ window.DINGADING_DATA = {
           cap: 30,
           items: [
             { code: "SB1", type: "count", points: [5, 10, 15], maxCount: 3, label: "문제 해결 건 수", method: "참가자 기반 검증" },
-            { code: "SB3", type: "count", points: [0, 5, 10], maxCount: 3, stateLabels: ["배점없음", "에스컬레이션", "혼자 처리"], label: "문제 처리 수준", method: "현장관찰" },
+            { code: "SB3", type: "count", points: [5, 10], maxCount: 2, stateLabels: ["에스컬레이션", "혼자 전부 처리"], label: "문제 처리 수준", method: "현장관찰" },
             { code: "SB4", type: "gain", points: 5, label: "담당 팀 게임을 예선 제출 가능 상태까지 완성 지원", method: "제출물 확인" },
           ]
         },

@@ -926,6 +926,8 @@ function participantMatches(region, entry, query) {
 function renderJudgePill(region, entry, item) {
   const evaluation = ensureEvaluation(region.id, entry.participantId);
   const state = (evaluation.items && evaluation.items[item.code]) || "";
+  if (isLevelChoiceItem(item)) return renderLevelChoicePill(region, entry, item, state);
+
   const stateClass = getStateClass(item, state);
   const stateText = getStateText(item, state);
   const sub = entry.role === "supporter" ? getTeamSummary(region.id, entry.participantId) : entry.school;
@@ -944,6 +946,48 @@ function renderJudgePill(region, entry, item) {
       </span>
       <strong>${escapeHtml(stateText)}</strong>
     </button>
+  `;
+}
+
+function isLevelChoiceItem(item) {
+  return item && item.code === "SB3";
+}
+
+function renderLevelChoicePill(region, entry, item, state) {
+  const currentCount = getItemCount(item, state);
+  const sub = entry.role === "supporter" ? getTeamSummary(region.id, entry.participantId) : entry.school;
+  return `
+    <div
+      class="level-choice-pill"
+      data-role="${entry.role}"
+      data-participant-id="${entry.participantId}"
+      data-item-code="${item.code}"
+    >
+      <span class="judge-pill-name">
+        <b>${escapeHtml(entry.name)}</b>
+        <small>${escapeHtml(sub || entry.school || "")}</small>
+      </span>
+      <div class="level-choice-actions">
+        <button
+          class="level-choice-button is-escalation ${currentCount === 1 ? "is-selected" : ""}"
+          type="button"
+          data-toggle-item
+          data-role="${entry.role}"
+          data-participant-id="${entry.participantId}"
+          data-item-code="${item.code}"
+          data-item-state="1"
+        >에스컬레이션</button>
+        <button
+          class="level-choice-button is-solo ${currentCount === 2 ? "is-selected" : ""}"
+          type="button"
+          data-toggle-item
+          data-role="${entry.role}"
+          data-participant-id="${entry.participantId}"
+          data-item-code="${item.code}"
+          data-item-state="2"
+        >혼자 전부 처리</button>
+      </div>
+    </div>
   `;
 }
 
@@ -1342,9 +1386,12 @@ function toggleItemState(region, button) {
   const item = findRubricItem(role, code);
   const evaluation = ensureEvaluation(region.id, participantId);
   const current = evaluation.items[code] || "";
+  const requestedState = button.dataset.itemState || "";
   let next = "";
 
-  if (item.type === "count") {
+  if (requestedState) {
+    next = current === requestedState ? "" : requestedState;
+  } else if (item.type === "count") {
     const nextCount = getItemCount(item, current) >= getItemMaxCount(item) ? 0 : getItemCount(item, current) + 1;
     next = nextCount ? String(nextCount) : "";
   } else if (item.type === "deduct") {
