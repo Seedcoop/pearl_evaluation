@@ -232,6 +232,7 @@ function startApp() {
   $("#show-participants").addEventListener("click", handleParticipantViewToggle);
   $("#show-team-manager").addEventListener("click", handleTeamManagerToggle);
   $("#participant-browser").addEventListener("click", handleParticipantBrowserClick);
+  $("#all-participant-view").addEventListener("click", handleAllParticipantViewClick);
   $("#participant-report").addEventListener("click", handleParticipantReportClick);
   $("#manual-score-form").addEventListener("submit", handleManualScoreSubmit);
   $("#manual-score-form").addEventListener("click", handleManualScoreClick);
@@ -350,7 +351,7 @@ function seedDefaultSuncheonTeams() {
   Object.keys(SUNCHEON_DEFAULT_TEAM_MAP).forEach((participantId) => {
     const key = getEvalKey(regionId, participantId);
     if (Object.prototype.hasOwnProperty.call(store.teams, key)) return;
-    store.teams[key] = SUNCHEON_DEFAULT_TEAM_MAP[participantId].map((teamNo) => `${teamNo}조`);
+    store.teams[key] = SUNCHEON_DEFAULT_TEAM_MAP[participantId].map((teamNo) => `${teamNo}팀`);
     changed = true;
   });
 
@@ -360,7 +361,9 @@ function seedDefaultSuncheonTeams() {
 function normalizeTeam(value) {
   const cleaned = String(value || "").trim().replace(/\s+/g, "");
   if (!cleaned) return "";
-  if (/^\d+$/.test(cleaned)) return `${cleaned}조`;
+  const numberMatch = cleaned.match(/^(\d+)(조|팀)?$/);
+  if (numberMatch) return `${numberMatch[1]}팀`;
+  if (cleaned.endsWith("조")) return `${cleaned.slice(0, -1)}팀`;
   return cleaned;
 }
 
@@ -379,7 +382,7 @@ function sortEntriesByTeam(regionId, entries) {
   return entries.slice().sort((a, b) => {
     const rankA = getTeamSortRank(regionId, a);
     const rankB = getTeamSortRank(regionId, b);
-    if (rankA !== rankB) return rankA - rankB;
+    if (rankA !== rankB) return rankB - rankA;
     return collator.compare(a.name, b.name);
   });
 }
@@ -408,7 +411,7 @@ function showQuestions(regionId) {
   ui.query = "";
   ui.roleFilter = "all";
   ui.openQuestion = "";
-  ui.viewMode = "questions";
+  ui.viewMode = "participants";
   ui.participantId = null;
   seedDefaultSuncheonTeams();
   $("#question-search").value = "";
@@ -461,25 +464,27 @@ function renderQuestionScreen() {
     return;
   }
 
-  $("#question-title").textContent = `${region.name} 문항별 평가`;
+  $("#question-title").textContent = `${region.name} 참가자 평가`;
   $("#question-eyebrow").textContent = region.date ? formatDate(region.date) : "지역예선";
   const participantButton = $("#show-participants");
   const teamManagerButton = $("#show-team-manager");
-  participantButton.textContent = ui.viewMode === "participants" ? "문항 보기" : "참가자 보기";
-  participantButton.classList.toggle("is-active", ui.viewMode === "participants");
-  teamManagerButton.textContent = ui.viewMode === "team-manager" ? "문항 보기" : "팀 입력";
+  participantButton.textContent = ui.viewMode === "all-participants" ? "참가자 보기" : "전체 참가자 보기";
+  participantButton.classList.toggle("is-active", ui.viewMode === "all-participants");
+  teamManagerButton.textContent = ui.viewMode === "team-manager" ? "참가자 보기" : "팀 입력";
   teamManagerButton.classList.toggle("is-active", ui.viewMode === "team-manager");
   renderPlanSummary(region);
 
   $("#question-list").hidden = true;
   $("#team-manager").hidden = true;
   $("#participant-browser").hidden = true;
+  $("#all-participant-view").hidden = true;
   $("#participant-report").hidden = true;
   $("#question-list").textContent = "";
   $("#team-manager").textContent = "";
   $("#participant-browser").textContent = "";
+  $("#all-participant-view").textContent = "";
   $("#participant-report").textContent = "";
-  $("#question-toolbar").hidden = ui.viewMode !== "questions";
+  $("#question-toolbar").hidden = true;
 
   if (ui.viewMode === "participants") {
     $("#participant-browser").hidden = false;
@@ -487,12 +492,16 @@ function renderQuestionScreen() {
   } else if (ui.viewMode === "team-manager") {
     $("#team-manager").hidden = false;
     renderTeamManager(region);
+  } else if (ui.viewMode === "all-participants") {
+    $("#all-participant-view").hidden = false;
+    renderAllParticipantView(region);
   } else if (ui.viewMode === "participant-detail") {
     $("#participant-report").hidden = false;
     renderParticipantReport(region);
   } else {
-    $("#question-list").hidden = false;
-    renderQuestionList(region);
+    ui.viewMode = "participants";
+    $("#participant-browser").hidden = false;
+    renderParticipantBrowser(region);
   }
   hydrateIcons();
 }
@@ -555,12 +564,7 @@ function renderQuestionList(region) {
 
 function renderParticipantBrowser(region) {
   const browser = $("#participant-browser");
-  const collator = new Intl.Collator("ko-KR");
-  const entries = getParticipantEntries(region).sort((a, b) => {
-    const roleDiff = (a.role === "supporter" ? 0 : 1) - (b.role === "supporter" ? 0 : 1);
-    if (roleDiff !== 0) return roleDiff;
-    return collator.compare(a.name, b.name);
-  });
+  const entries = sortEntriesByTeam(region.id, getParticipantEntries(region));
 
   if (!entries.length) {
     browser.innerHTML = `<div class="empty-state">참가자 명단이 아직 없습니다.</div>`;
@@ -571,9 +575,9 @@ function renderParticipantBrowser(region) {
     <div class="participant-browser-head">
       <div>
         <p class="eyebrow">참가자 보기</p>
-        <h3>${escapeHtml(region.name)} 참가자 명단</h3>
+        <h3>${escapeHtml(region.name)} 참가자 평가</h3>
       </div>
-      <button class="ghost-button compact-action" type="button" data-back-questions>문항 보기</button>
+      <span class="participant-browser-count">${entries.length}명</span>
     </div>
     <div class="participant-card-grid">
       ${entries.map((entry) => renderParticipantBrowserCard(region, entry)).join("")}
@@ -584,12 +588,13 @@ function renderParticipantBrowser(region) {
 function renderParticipantBrowserCard(region, entry) {
   const score = scoreParticipant(region.id, entry);
   const evaluation = getEvaluation(region.id, entry.participantId);
-  const teams = entry.role === "supporter" ? getTeamSummary(region.id, entry.participantId) : entry.school;
+  const teamSummary = entry.role === "supporter" ? getTeamSummary(region.id, entry.participantId) : "퍼실리테이터";
   return `
     <button class="participant-browser-card" type="button" data-open-participant-report="${entry.participantId}">
+      <span class="participant-team-main">${escapeHtml(teamSummary)}</span>
       <span class="participant-card-main">
         <b>${escapeHtml(entry.name)}</b>
-        <small>${escapeHtml(teams || entry.school || "")}</small>
+        <small>${escapeHtml(entry.school || "")}</small>
       </span>
       <span class="participant-card-side">
         <span class="role-badge ${entry.role}">${escapeHtml(DATA.roles[entry.role])}</span>
@@ -597,6 +602,19 @@ function renderParticipantBrowserCard(region, entry) {
         <small>${evaluation.complete ? "완료" : "진행"}</small>
       </span>
     </button>
+  `;
+}
+
+function renderAllParticipantView(region) {
+  $("#all-participant-view").innerHTML = `
+    <div class="participant-browser-head">
+      <div>
+        <p class="eyebrow">전체 참가자 보기</p>
+        <h3>${escapeHtml(region.name)} 전체 참가자</h3>
+      </div>
+      <button class="ghost-button compact-action" type="button" data-back-participant-list>참가자 보기</button>
+    </div>
+    <div class="empty-state">전체 참가자 보기 화면은 다음 단계에서 구성합니다.</div>
   `;
 }
 
@@ -621,17 +639,23 @@ function renderParticipantReport(region) {
       <div class="participant-report-title">
         <p class="eyebrow">${escapeHtml(region.name)} · ${escapeHtml(DATA.roles[entry.role])}</p>
         <h3>${escapeHtml(entry.name)}</h3>
+        <p class="participant-report-team">${escapeHtml(entry.role === "supporter" ? getTeamSummary(region.id, entry.participantId) : "퍼실리테이터")}</p>
         <p class="person-meta">${escapeHtml(entry.school)} · ${escapeHtml(entry.major)}</p>
       </div>
-      <strong class="participant-total">${score.total}</strong>
+      <div class="participant-report-scorebox">
+        <strong class="participant-total">${score.total}</strong>
+        <button class="participant-complete-button ${evaluation.complete ? "is-complete" : ""}" type="button" data-toggle-complete data-participant-id="${entry.participantId}">
+          ${evaluation.complete ? "완료" : "진행"}
+        </button>
+      </div>
     </div>
     <div class="participant-report-sections">
-      ${rubric.sections.map((section) => renderParticipantReportSection(section, evaluation, score.sections[section.id])).join("")}
+      ${rubric.sections.map((section) => renderParticipantReportSection(region, entry, section, evaluation, score.sections[section.id])).join("")}
     </div>
   `;
 }
 
-function renderParticipantReportSection(section, evaluation, sectionScore = { score: 0, raw: 0, cap: section.cap }) {
+function renderParticipantReportSection(region, entry, section, evaluation, sectionScore = { score: 0, raw: 0, cap: section.cap }) {
   if (section.manual) {
     return `
       <section class="participant-report-section">
@@ -639,10 +663,10 @@ function renderParticipantReportSection(section, evaluation, sectionScore = { sc
           <strong>${escapeHtml(section.title)}</strong>
           <span>${sectionScore.score}/${section.cap}</span>
         </header>
-        <div class="report-row">
+        <button class="report-row report-action report-manual-row" type="button" data-open-manual-score data-role="${entry.role}" data-participant-id="${entry.participantId}">
           <span class="report-question">${escapeHtml(section.label)}</span>
           <span class="report-state is-score">${clampNumber(evaluation.overallScore || 0, 0, section.cap)}점</span>
-        </div>
+        </button>
         ${evaluation.overallNote ? `<p class="report-note">${escapeHtml(evaluation.overallNote)}</p>` : ""}
       </section>
     `;
@@ -657,21 +681,55 @@ function renderParticipantReportSection(section, evaluation, sectionScore = { sc
         ${(section.items || [])
           .map((item) => {
             const state = (evaluation.items && evaluation.items[item.code]) || "";
+            if (isLevelChoiceItem(item)) return renderReportLevelChoiceRow(region, entry, item, state);
             const stateText = getStateText(item, state);
             const earned = scoreItem(item, state);
             const stateClass = getStateClass(item, state);
             const maxPoint = getItemPointLimit(item);
             return `
-              <div class="report-row">
+              <button class="report-row report-action" type="button" data-toggle-item data-role="${entry.role}" data-participant-id="${entry.participantId}" data-item-code="${item.code}">
                 <span class="report-code">${escapeHtml(item.code)}</span>
                 <span class="report-question">${escapeHtml(item.label)}</span>
                 <span class="report-state ${stateClass}">${escapeHtml(stateText)}</span>
                 <span class="report-score">${earned}/${maxPoint}</span>
-              </div>
+              </button>
             `;
           })
         .join("")}
     </section>
+  `;
+}
+
+function renderReportLevelChoiceRow(region, entry, item, state) {
+  const currentCount = getItemCount(item, state);
+  const earned = scoreItem(item, state);
+  const maxPoint = getItemPointLimit(item);
+  return `
+    <div class="report-row report-level-row">
+      <span class="report-code">${escapeHtml(item.code)}</span>
+      <span class="report-question">${escapeHtml(item.label)}</span>
+      <div class="report-level-actions">
+        <button
+          class="level-choice-button is-escalation ${currentCount === 1 ? "is-selected" : ""}"
+          type="button"
+          data-toggle-item
+          data-role="${entry.role}"
+          data-participant-id="${entry.participantId}"
+          data-item-code="${item.code}"
+          data-item-state="1"
+        >에스컬레이션</button>
+        <button
+          class="level-choice-button is-solo ${currentCount === 2 ? "is-selected" : ""}"
+          type="button"
+          data-toggle-item
+          data-role="${entry.role}"
+          data-participant-id="${entry.participantId}"
+          data-item-code="${item.code}"
+          data-item-state="2"
+        >혼자 전부 처리</button>
+      </div>
+      <span class="report-score">${earned}/${maxPoint}</span>
+    </div>
   `;
 }
 
@@ -992,8 +1050,20 @@ function renderLevelChoicePill(region, entry, item, state) {
 }
 
 function getTeamSummary(regionId, participantId) {
-  const teams = getTeams(regionId, participantId);
+  const teams = getSortedTeams(regionId, participantId);
   return teams.length ? teams.join(" ") : "팀 미입력";
+}
+
+function getSortedTeams(regionId, participantId) {
+  return getTeams(regionId, participantId)
+    .map((team) => normalizeTeam(team))
+    .filter(Boolean)
+    .sort((a, b) => {
+      const numberA = Number(String(a).replace(/[^\d]/g, ""));
+      const numberB = Number(String(b).replace(/[^\d]/g, ""));
+      if (Number.isFinite(numberA) && Number.isFinite(numberB) && numberA !== numberB) return numberB - numberA;
+      return String(a).localeCompare(String(b), "ko-KR");
+    });
 }
 
 function getStateClass(item, state) {
@@ -1092,7 +1162,7 @@ function renderTeamManager(region) {
   }
 
   supporters.forEach((entry) => {
-    const teams = getTeams(region.id, entry.participantId);
+    const teams = getSortedTeams(region.id, entry.participantId);
     const card = document.createElement("article");
     card.className = "team-person-card";
     card.dataset.participantId = entry.participantId;
@@ -1108,7 +1178,7 @@ function renderTeamManager(region) {
         ${teams.length ? teams.map((team) => renderTeamTag(team, true)).join("") : '<span class="person-meta">담당 팀 미입력</span>'}
       </div>
       <div class="team-mini-form">
-        <input data-team-input type="text" inputmode="text" autocomplete="off" placeholder="1조" aria-label="${escapeHtml(entry.name)} 담당 팀" />
+        <input data-team-input type="text" inputmode="text" autocomplete="off" placeholder="1팀" aria-label="${escapeHtml(entry.name)} 담당 팀" />
         <button type="button" data-add-team aria-label="담당 팀 추가"><i data-lucide="plus"></i></button>
       </div>
     `;
@@ -1197,21 +1267,16 @@ function handleRegionClick(event) {
 }
 
 function handleParticipantViewToggle() {
-  if (ui.viewMode === "questions") {
-    ui.viewMode = "participants";
-    ui.participantId = null;
-  } else {
-    ui.viewMode = ui.viewMode === "participants" ? "questions" : "participants";
-    ui.participantId = null;
-    ui.roleFilter = "all";
-    $$(".filter-chip").forEach((chip) => chip.classList.toggle("is-active", chip.dataset.questionRoleFilter === "all"));
-  }
+  ui.viewMode = ui.viewMode === "all-participants" ? "participants" : "all-participants";
+  ui.participantId = null;
+  ui.roleFilter = "all";
+  $$(".filter-chip").forEach((chip) => chip.classList.toggle("is-active", chip.dataset.questionRoleFilter === "all"));
   renderQuestionScreen();
 }
 
 function handleTeamManagerToggle() {
   if (ui.viewMode === "team-manager") {
-    ui.viewMode = "questions";
+    ui.viewMode = "participants";
     ui.roleFilter = "all";
   } else {
     ui.viewMode = "team-manager";
@@ -1225,15 +1290,6 @@ function handleTeamManagerToggle() {
 }
 
 function handleParticipantBrowserClick(event) {
-  if (event.target.closest("[data-back-questions]")) {
-    ui.viewMode = "questions";
-    ui.participantId = null;
-    ui.roleFilter = "all";
-    $$(".filter-chip").forEach((chip) => chip.classList.toggle("is-active", chip.dataset.questionRoleFilter === "all"));
-    renderQuestionScreen();
-    return;
-  }
-
   const button = event.target.closest("[data-open-participant-report]");
   if (!button) return;
   ui.viewMode = "participant-detail";
@@ -1242,6 +1298,36 @@ function handleParticipantBrowserClick(event) {
 }
 
 function handleParticipantReportClick(event) {
+  const region = getRegion(ui.regionId);
+
+  if (event.target.closest("[data-back-participant-list]")) {
+    ui.viewMode = "participants";
+    ui.participantId = null;
+    renderQuestionScreen();
+    return;
+  }
+
+  const manualButton = event.target.closest("[data-open-manual-score]");
+  if (manualButton) {
+    openManualScoreModal(region, manualButton);
+    return;
+  }
+
+  const itemButton = event.target.closest("[data-toggle-item]");
+  if (itemButton) {
+    toggleItemState(region, itemButton);
+    renderQuestionScreen();
+    return;
+  }
+
+  const completeButton = event.target.closest("[data-toggle-complete]");
+  if (completeButton) {
+    toggleComplete(region, completeButton);
+    renderQuestionScreen();
+  }
+}
+
+function handleAllParticipantViewClick(event) {
   if (!event.target.closest("[data-back-participant-list]")) return;
   ui.viewMode = "participants";
   ui.participantId = null;
@@ -1587,7 +1673,7 @@ function buildWorkbookSheets(evaluatorName) {
         DATA.roles[entry.role],
         entry.school,
         entry.major,
-        getTeams(region.id, entry.participantId).join(" "),
+        getSortedTeams(region.id, entry.participantId).join(" "),
         score,
         evaluation.complete ? "Y" : "",
         evaluation.updatedAt || "",
