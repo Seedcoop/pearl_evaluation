@@ -343,15 +343,37 @@ function setTeams(regionId, participantId, teams) {
   saveStore({ silent: true });
 }
 
-function seedDefaultSuncheonTeams() {
-  const regionId = "jeonnam-suncheon";
-  if (ui.regionId !== regionId) return;
+const YANGYANG_DEFAULT_TEAM_MAP = {
+  "kim-sangyun": [1, 2],
+  "park-seoyeon": [3],
+  "son-juhee": [4, 5],
+  "oh-sowon": [6],
+  "yun-seojin": [7],
+  "jeong-wooseong": [8, 9],
+  "lee-gyubin": [10, 11],
+  "park-jiwon": [12],
+  "jo-seongjun": [13],
+  "kim-boguk": [14],
+  "kim-hyeongil": [15],
+  "kim-hongmin": [16],
+  "no-geonpyo": [17],
+  "hwang-taegeon": [18]
+};
+
+function seedDefaultRegionalTeams() {
+  const defaultMaps = {
+    "jeonnam-suncheon": SUNCHEON_DEFAULT_TEAM_MAP,
+    "gangwon-yangyang": YANGYANG_DEFAULT_TEAM_MAP
+  };
+  const regionId = ui.regionId;
+  const teamMap = defaultMaps[regionId];
+  if (!teamMap) return;
 
   let changed = false;
-  Object.keys(SUNCHEON_DEFAULT_TEAM_MAP).forEach((participantId) => {
+  Object.keys(teamMap).forEach((participantId) => {
     const key = getEvalKey(regionId, participantId);
-    if (Object.prototype.hasOwnProperty.call(store.teams, key)) return;
-    store.teams[key] = SUNCHEON_DEFAULT_TEAM_MAP[participantId].map((teamNo) => `${teamNo}팀`);
+    if (Object.prototype.hasOwnProperty.call(store.teams, key) && store.teams[key].length) return;
+    store.teams[key] = teamMap[participantId].map((teamNo) => `${teamNo}팀`);
     changed = true;
   });
 
@@ -413,7 +435,7 @@ function showQuestions(regionId) {
   ui.openQuestion = "";
   ui.viewMode = "participants";
   ui.participantId = null;
-  seedDefaultSuncheonTeams();
+  seedDefaultRegionalTeams();
   $("#question-search").value = "";
   $$(".filter-chip").forEach((chip) => chip.classList.toggle("is-active", chip.dataset.questionRoleFilter === "all"));
   renderQuestionScreen();
@@ -606,15 +628,148 @@ function renderParticipantBrowserCard(region, entry) {
 }
 
 function renderAllParticipantView(region) {
+  const entries = sortEntriesByTeam(region.id, getParticipantEntries(region));
+  const columns = getAllParticipantColumns();
+  const zoom = getAllParticipantZoom();
   $("#all-participant-view").innerHTML = `
     <div class="participant-browser-head">
       <div>
         <p class="eyebrow">전체 참가자 보기</p>
-        <h3>${escapeHtml(region.name)} 전체 참가자</h3>
+        <h3>${escapeHtml(region.name)} 엑셀식 평가표</h3>
       </div>
       <button class="ghost-button compact-action" type="button" data-back-participant-list>참가자 보기</button>
     </div>
-    <div class="empty-state">전체 참가자 보기 화면은 다음 단계에서 구성합니다.</div>
+    <div class="all-sheet-toolbar">
+      <span>모든 문항 열을 한 표에 표시</span>
+      <div class="all-sheet-zoom" aria-label="표 확대 축소">
+        <button type="button" data-all-zoom="out">-</button>
+        <strong>${Math.round(zoom * 100)}%</strong>
+        <button type="button" data-all-zoom="in">+</button>
+        <button type="button" data-all-zoom="reset">맞춤</button>
+      </div>
+    </div>
+    <div class="all-sheet-pan">
+      <table class="all-sheet-table" style="--all-table-scale: ${zoom}">
+        <thead>
+          <tr>
+            <th class="all-sheet-person-col">참가자</th>
+            <th>역할</th>
+            <th>총점</th>
+            <th>완료</th>
+            ${columns.map((column) => `
+              <th title="${escapeHtml(column.label)}">
+                <button class="all-sheet-question-head" type="button" data-all-question-info="${escapeHtml(column.key)}">
+                  <span>${escapeHtml(column.code)}</span>
+                  <small>${escapeHtml(column.roleLabel)}</small>
+                </button>
+              </th>
+            `).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${entries.map((entry) => renderAllParticipantRow(region, entry, columns)).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function getAllParticipantZoom() {
+  return clampNumber(ui.allParticipantZoom || 0.34, 0.22, 1.4);
+}
+
+function setAllParticipantZoom(action) {
+  const current = getAllParticipantZoom();
+  if (action === "reset") {
+    ui.allParticipantZoom = 0.34;
+  } else if (action === "in") {
+    ui.allParticipantZoom = clampNumber(current + 0.08, 0.22, 1.4);
+  } else if (action === "out") {
+    ui.allParticipantZoom = clampNumber(current - 0.08, 0.22, 1.4);
+  }
+}
+
+function getAllParticipantColumns() {
+  return ["supporter", "facilitator"].flatMap((role) => {
+    const rubric = DATA.rubrics[role];
+    if (!rubric) return [];
+    return rubric.sections.flatMap((section) => {
+      if (section.manual) {
+        return [{
+          role,
+          roleLabel: DATA.roles[role],
+          code: role === "supporter" ? "S기타" : "F기타",
+          key: `${role}-manual`,
+          label: section.title,
+          sectionTitle: section.title,
+          manual: true
+        }];
+      }
+      return (section.items || []).map((item) => ({
+        role,
+        roleLabel: DATA.roles[role],
+        code: item.code,
+        key: `${role}-${item.code}`,
+        sectionTitle: section.title,
+        label: item.label,
+        item
+      }));
+    });
+  });
+}
+
+function renderAllParticipantRow(region, entry, columns) {
+  const score = scoreParticipant(region.id, entry);
+  const evaluation = ensureEvaluation(region.id, entry.participantId);
+  const teamSummary = entry.role === "supporter" ? getTeamSummary(region.id, entry.participantId) : "퍼실리테이터";
+  return `
+    <tr>
+      <th class="all-sheet-person-col">
+        <span class="all-sheet-team">${escapeHtml(teamSummary)}</span>
+        <strong>${escapeHtml(entry.name)}</strong>
+        <small>${escapeHtml(entry.school || "")}</small>
+      </th>
+      <td>${escapeHtml(DATA.roles[entry.role] || entry.role)}</td>
+      <td class="all-sheet-total">${score.total}</td>
+      <td>
+        <button class="all-sheet-button all-sheet-complete ${evaluation.complete ? "is-y" : ""}" type="button" data-toggle-complete data-role="${entry.role}" data-participant-id="${entry.participantId}">
+          ${evaluation.complete ? "완료" : "진행"}
+        </button>
+      </td>
+      ${columns.map((column) => renderAllParticipantCell(region, entry, column)).join("")}
+    </tr>
+  `;
+}
+
+function renderAllParticipantCell(region, entry, column) {
+  if (column.role !== entry.role) return `<td class="all-sheet-na">-</td>`;
+  const evaluation = ensureEvaluation(region.id, entry.participantId);
+  if (column.manual) {
+    const cap = getManualCap(entry.role);
+    const value = clampNumber(evaluation.overallScore || 0, 0, cap);
+    return `
+      <td>
+        <button class="all-sheet-button ${value > 0 ? "is-y" : ""}" type="button" data-open-manual-score data-role="${entry.role}" data-participant-id="${entry.participantId}">
+          <b>${value}</b>
+          <small>/${cap}</small>
+        </button>
+      </td>
+    `;
+  }
+
+  const item = column.item;
+  const state = (evaluation.items && evaluation.items[item.code]) || "";
+  const stateText = getStateText(item, state);
+  const stateClass = getStateClass(item, state);
+  const earned = scoreItem(item, state);
+  const maxPoint = getItemPointLimit(item);
+  return `
+    <td>
+      <button class="all-sheet-button ${stateClass}" type="button" title="${escapeHtml(item.label)}" data-toggle-item data-role="${entry.role}" data-participant-id="${entry.participantId}" data-item-code="${item.code}">
+        <b>${escapeHtml(stateText)}</b>
+        <small>${earned}/${maxPoint}</small>
+      </button>
+    </td>
   `;
 }
 
@@ -656,13 +811,12 @@ function renderParticipantReport(region) {
 }
 
 function renderParticipantReportSection(region, entry, section, evaluation, sectionScore = { score: 0, raw: 0, cap: section.cap }) {
+  const collapsed = isParticipantReportSectionCollapsed(section.id);
+  const sectionHeader = renderParticipantReportSectionHeader(section, sectionScore, collapsed);
   if (section.manual) {
     return `
-      <section class="participant-report-section">
-        <header>
-          <strong>${escapeHtml(section.title)}</strong>
-          <span>${sectionScore.score}/${section.cap}</span>
-        </header>
+      <section class="participant-report-section ${collapsed ? "is-collapsed" : ""}">
+        ${sectionHeader}
         <button class="report-row report-action report-manual-row" type="button" data-open-manual-score data-role="${entry.role}" data-participant-id="${entry.participantId}">
           <span class="report-question">${escapeHtml(section.label)}</span>
           <span class="report-state is-score">${clampNumber(evaluation.overallScore || 0, 0, section.cap)}점</span>
@@ -673,15 +827,11 @@ function renderParticipantReportSection(region, entry, section, evaluation, sect
   }
 
   return `
-    <section class="participant-report-section">
-      <header>
-        <strong>${escapeHtml(section.title)}</strong>
-        <span>${sectionScore.score}/${section.cap}</span>
-      </header>
+    <section class="participant-report-section ${collapsed ? "is-collapsed" : ""}">
+      ${sectionHeader}
         ${(section.items || [])
           .map((item) => {
             const state = (evaluation.items && evaluation.items[item.code]) || "";
-            if (isLevelChoiceItem(item)) return renderReportLevelChoiceRow(region, entry, item, state);
             const stateText = getStateText(item, state);
             const earned = scoreItem(item, state);
             const stateClass = getStateClass(item, state);
@@ -697,6 +847,18 @@ function renderParticipantReportSection(region, entry, section, evaluation, sect
           })
         .join("")}
     </section>
+  `;
+}
+
+function renderParticipantReportSectionHeader(section, sectionScore, collapsed) {
+  return `
+    <header>
+      <button class="participant-report-section-toggle" type="button" data-toggle-report-section="${section.id}" aria-expanded="${String(!collapsed)}">
+        <strong>${escapeHtml(section.title)}</strong>
+        <span>${sectionScore.score}/${section.cap}</span>
+        ${iconChevron(collapsed ? "down" : "up")}
+      </button>
+    </header>
   `;
 }
 
@@ -1008,6 +1170,10 @@ function renderJudgePill(region, entry, item) {
 }
 
 function isLevelChoiceItem(item) {
+  return false;
+}
+
+function isProblemHandlingItem(item) {
   return item && item.code === "SB3";
 }
 
@@ -1067,6 +1233,8 @@ function getSortedTeams(regionId, participantId) {
 }
 
 function getStateClass(item, state) {
+  if (isProblemHandlingItem(item) && getItemCount(item, state) === 3) return "is-n";
+
   if (item.type === "count") {
     const count = getItemCount(item, state);
     if (state && count > 0) return "is-y";
@@ -1222,6 +1390,13 @@ function scoreEvaluation(role, evaluation = {}) {
 }
 
 function scoreItem(item, state) {
+  if (isProblemHandlingItem(item)) {
+    const count = getItemCount(item, state);
+    if (count === 1) return 5;
+    if (count === 2) return 10;
+    return 0;
+  }
+
   if (item.type === "deduct") {
     return state === "n" ? 0 : item.points;
   }
@@ -1255,6 +1430,7 @@ function getItemCountScore(item, state) {
 
 function getItemPointLimit(item) {
   if (!item) return 0;
+  if (isProblemHandlingItem(item)) return 10;
   if (item.type !== "count") return Number(item.points) || 0;
   if (!Array.isArray(item.points) || !item.points.length) return 0;
   return item.points[item.points.length - 1];
@@ -1307,6 +1483,13 @@ function handleParticipantReportClick(event) {
     return;
   }
 
+  const sectionToggle = event.target.closest("[data-toggle-report-section]");
+  if (sectionToggle) {
+    toggleParticipantReportSection(sectionToggle.dataset.toggleReportSection);
+    renderQuestionScreen();
+    return;
+  }
+
   const manualButton = event.target.closest("[data-open-manual-score]");
   if (manualButton) {
     openManualScoreModal(region, manualButton);
@@ -1327,11 +1510,135 @@ function handleParticipantReportClick(event) {
   }
 }
 
+function isParticipantReportSectionCollapsed(sectionId) {
+  return Boolean(ui.collapsedReportSections && ui.collapsedReportSections[sectionId]);
+}
+
+function toggleParticipantReportSection(sectionId) {
+  if (!sectionId) return;
+  ui.collapsedReportSections = ui.collapsedReportSections || {};
+  ui.collapsedReportSections[sectionId] = !ui.collapsedReportSections[sectionId];
+}
+
 function handleAllParticipantViewClick(event) {
-  if (!event.target.closest("[data-back-participant-list]")) return;
-  ui.viewMode = "participants";
-  ui.participantId = null;
-  renderQuestionScreen();
+  const region = getRegion(ui.regionId);
+
+  if (event.target.closest("[data-close-all-question-modal]")) {
+    closeAllQuestionInfoModal();
+    return;
+  }
+
+  const questionInfoButton = event.target.closest("[data-all-question-info]");
+  if (questionInfoButton) {
+    showAllQuestionInfoModal(questionInfoButton.dataset.allQuestionInfo);
+    return;
+  }
+
+  if (event.target.closest("[data-back-participant-list]")) {
+    ui.viewMode = "participants";
+    ui.participantId = null;
+    renderQuestionScreen();
+    return;
+  }
+
+  const zoomButton = event.target.closest("[data-all-zoom]");
+  if (zoomButton) {
+    setAllParticipantZoom(zoomButton.dataset.allZoom);
+    renderQuestionScreen();
+    return;
+  }
+
+  const manualButton = event.target.closest("[data-open-manual-score]");
+  if (manualButton) {
+    openManualScoreModal(region, manualButton);
+    return;
+  }
+
+  const itemButton = event.target.closest("[data-toggle-item]");
+  if (itemButton) {
+    toggleItemState(region, itemButton);
+    renderQuestionScreen();
+    return;
+  }
+
+  const completeButton = event.target.closest("[data-toggle-complete]");
+  if (completeButton) {
+    toggleComplete(region, completeButton);
+    renderQuestionScreen();
+  }
+}
+
+function showAllQuestionInfoModal(columnKey) {
+  const column = getAllParticipantColumns().find((item) => item.key === columnKey);
+  if (!column) return;
+  closeAllQuestionInfoModal();
+  $("#all-participant-view").insertAdjacentHTML("beforeend", `
+    <div class="all-question-modal">
+      <button class="all-question-backdrop" type="button" data-close-all-question-modal aria-label="문항 설명 닫기"></button>
+      <section class="all-question-dialog" role="dialog" aria-modal="true" aria-labelledby="all-question-title">
+        <button class="all-question-close" type="button" data-close-all-question-modal aria-label="닫기">
+          <i data-lucide="x"></i>
+        </button>
+        <p class="eyebrow">${escapeHtml(column.roleLabel)}</p>
+        <h3 id="all-question-title">${escapeHtml(column.code)}</h3>
+        <p class="all-question-label">${escapeHtml(column.label)}</p>
+        <dl class="all-question-meta">
+          <div>
+            <dt>영역</dt>
+            <dd>${escapeHtml(column.sectionTitle || "-")}</dd>
+          </div>
+          <div>
+            <dt>평가 방식</dt>
+            <dd>${escapeHtml(getAllQuestionTypeCopy(column))}</dd>
+          </div>
+          <div>
+            <dt>배점</dt>
+            <dd>${escapeHtml(getAllQuestionPointCopy(column))}</dd>
+          </div>
+          <div>
+            <dt>근거</dt>
+            <dd>${escapeHtml(getAllQuestionMethodCopy(column))}</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+  `);
+  hydrateIcons();
+}
+
+function closeAllQuestionInfoModal() {
+  const modal = $("#all-participant-view .all-question-modal");
+  if (modal) modal.remove();
+}
+
+function getAllQuestionTypeCopy(column) {
+  if (column.manual) return "직접 점수 입력";
+  const item = column.item;
+  if (!item) return "-";
+  if (item.type === "count" && Array.isArray(item.stateLabels)) return "버튼 터치로 상태 순환";
+  if (item.type === "count") return "버튼 터치로 건수 증가";
+  if (item.type === "deduct") return "Y/N 감점형";
+  return "Y/N 가점형";
+}
+
+function getAllQuestionPointCopy(column) {
+  if (column.manual) return `0-${getManualCap(column.role)}점 직접 입력`;
+  const item = column.item;
+  if (!item) return "-";
+  if (isProblemHandlingItem(item)) return "에스컬레이션 5점 / 혼자 전부 처리 10점 / 문제 해결 실패 0점";
+  if (item.type === "count" && Array.isArray(item.stateLabels)) {
+    return item.stateLabels.map((label, index) => `${label} ${scoreItem(item, String(index + 1))}점`).join(" / ");
+  }
+  if (item.type === "count" && Array.isArray(item.points)) {
+    return `${item.points.join(" / ")}점, 최대 ${getItemMaxCount(item)}회`;
+  }
+  if (item.type === "deduct") return `기본 ${item.points}점, N 선택 시 0점`;
+  return `Y ${item.points}점 / N 0점`;
+}
+
+function getAllQuestionMethodCopy(column) {
+  if (column.manual) return "평가자 종합 판단";
+  return (column.item && column.item.method) || "-";
 }
 
 function handleQuestionClick(event) {

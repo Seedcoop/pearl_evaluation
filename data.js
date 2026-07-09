@@ -188,8 +188,8 @@ window.DINGADING_DATA = {
           title: "② 프로그램 운영 기여도",
           cap: 30,
           items: [
-            { code: "SB1", type: "count", points: [5, 10, 15], maxCount: 3, label: "문제 해결 건 수", method: "참가자 기반 검증" },
-            { code: "SB3", type: "count", points: [5, 10], maxCount: 2, stateLabels: ["에스컬레이션", "혼자 전부 처리"], label: "문제 처리 수준", method: "현장관찰" },
+            { code: "SB1", type: "count", points: [5, 10, 15], maxCount: 3, label: "빌드박스 문제 해결 건 수", method: "참가자 기반 검증" },
+            { code: "SB3", type: "count", points: [5, 10, 0], maxCount: 3, stateLabels: ["에스컬레이션", "혼자 전부 처리", "문제 해결 실패"], label: "문제 처리 수준", method: "현장관찰" },
             { code: "SB4", type: "gain", points: 5, label: "담당 팀 게임을 예선 제출 가능 상태까지 완성 지원", method: "제출물 확인" },
           ]
         },
@@ -198,7 +198,7 @@ window.DINGADING_DATA = {
           title: "③ 교육 성과",
           cap: 30,
           items: [
-            { code: "SC1", type: "gain", points: 15, label: "학생이 이해할 때까지 눈높이로 재설명함", method: "현장관찰" },
+            { code: "SC1", type: "gain", points: 15, label: "학생 친화적으로 교육, 설명함", method: "현장관찰" },
             { code: "SC2", type: "gain", points: 10, label: "참가자/학생 긍정 반응·감사 표현 확인", method: "현장관찰" },
             { code: "SC3", type: "gain", points: 5, label: "담당 팀 본선 진출 여부", method: "심사 결과" }
           ]
