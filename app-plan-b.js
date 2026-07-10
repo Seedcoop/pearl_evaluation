@@ -230,6 +230,10 @@ function startApp() {
   $("#show-participants").addEventListener("click", handleParticipantViewToggle);
   $("#participant-browser").addEventListener("click", handleParticipantBrowserClick);
   $("#all-participant-view").addEventListener("click", handleAllParticipantViewClick);
+  $("#all-participant-view").addEventListener("pointerdown", handleAllSheetPointerDown);
+  $("#all-participant-view").addEventListener("pointermove", handleAllSheetPointerMove);
+  $("#all-participant-view").addEventListener("pointerup", handleAllSheetPointerEnd);
+  $("#all-participant-view").addEventListener("pointercancel", handleAllSheetPointerEnd);
   $("#participant-report").addEventListener("click", handleParticipantReportClick);
   $("#manual-score-form").addEventListener("submit", handleManualScoreSubmit);
   $("#manual-score-form").addEventListener("click", handleManualScoreClick);
@@ -1510,6 +1514,13 @@ function toggleParticipantReportSection(sectionId) {
 }
 
 function handleAllParticipantViewClick(event) {
+  if (ui.allSheetIgnoreClick) {
+    event.preventDefault();
+    event.stopPropagation();
+    ui.allSheetIgnoreClick = false;
+    return;
+  }
+
   const region = getRegion(ui.regionId);
 
   if (event.target.closest("[data-close-all-question-modal]")) {
@@ -1555,6 +1566,48 @@ function handleAllParticipantViewClick(event) {
     toggleComplete(region, completeButton);
     renderQuestionScreen();
   }
+}
+
+function handleAllSheetPointerDown(event) {
+  const pan = event.target.closest(".all-sheet-pan");
+  if (!pan) return;
+  ui.allSheetDrag = {
+    pointerId: event.pointerId,
+    pan,
+    startX: event.clientX,
+    startY: event.clientY,
+    scrollLeft: pan.scrollLeft,
+    scrollTop: pan.scrollTop,
+    active: false
+  };
+  pan.setPointerCapture(event.pointerId);
+}
+
+function handleAllSheetPointerMove(event) {
+  const drag = ui.allSheetDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+  const deltaX = event.clientX - drag.startX;
+  const deltaY = event.clientY - drag.startY;
+  if (!drag.active) {
+    if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 7) return;
+    drag.active = true;
+    ui.allSheetIgnoreClick = true;
+  }
+  event.preventDefault();
+  drag.pan.scrollLeft = drag.scrollLeft - deltaX;
+  drag.pan.scrollTop = drag.scrollTop - deltaY;
+}
+
+function handleAllSheetPointerEnd(event) {
+  const drag = ui.allSheetDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+  if (drag.active) {
+    ui.allSheetIgnoreClick = true;
+    window.setTimeout(() => {
+      ui.allSheetIgnoreClick = false;
+    }, 120);
+  }
+  ui.allSheetDrag = null;
 }
 
 function showAllQuestionInfoModal(columnKey) {
