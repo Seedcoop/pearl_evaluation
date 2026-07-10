@@ -227,10 +227,7 @@ function startApp() {
   });
   $("#question-list").addEventListener("click", handleQuestionClick);
   $("#question-list").addEventListener("input", handleQuestionInput);
-  $("#team-manager").addEventListener("click", handleTeamClick);
-  $("#team-manager").addEventListener("keydown", handleTeamKeydown);
   $("#show-participants").addEventListener("click", handleParticipantViewToggle);
-  $("#show-team-manager").addEventListener("click", handleTeamManagerToggle);
   $("#participant-browser").addEventListener("click", handleParticipantBrowserClick);
   $("#all-participant-view").addEventListener("click", handleAllParticipantViewClick);
   $("#participant-report").addEventListener("click", handleParticipantReportClick);
@@ -489,20 +486,15 @@ function renderQuestionScreen() {
   $("#question-title").textContent = `${region.name} 참가자 평가`;
   $("#question-eyebrow").textContent = region.date ? formatDate(region.date) : "지역예선";
   const participantButton = $("#show-participants");
-  const teamManagerButton = $("#show-team-manager");
   participantButton.textContent = ui.viewMode === "all-participants" ? "참가자 보기" : "전체 참가자 보기";
   participantButton.classList.toggle("is-active", ui.viewMode === "all-participants");
-  teamManagerButton.textContent = ui.viewMode === "team-manager" ? "참가자 보기" : "팀 입력";
-  teamManagerButton.classList.toggle("is-active", ui.viewMode === "team-manager");
   renderPlanSummary(region);
 
   $("#question-list").hidden = true;
-  $("#team-manager").hidden = true;
   $("#participant-browser").hidden = true;
   $("#all-participant-view").hidden = true;
   $("#participant-report").hidden = true;
   $("#question-list").textContent = "";
-  $("#team-manager").textContent = "";
   $("#participant-browser").textContent = "";
   $("#all-participant-view").textContent = "";
   $("#participant-report").textContent = "";
@@ -511,9 +503,6 @@ function renderQuestionScreen() {
   if (ui.viewMode === "participants") {
     $("#participant-browser").hidden = false;
     renderParticipantBrowser(region);
-  } else if (ui.viewMode === "team-manager") {
-    $("#team-manager").hidden = false;
-    renderTeamManager(region);
   } else if (ui.viewMode === "all-participants") {
     $("#all-participant-view").hidden = false;
     renderAllParticipantView(region);
@@ -2391,6 +2380,10 @@ function showToast(message) {
 
 function hydrateIcons() {
   if (window.lucide) window.lucide.createIcons();
+}
+
+function iconChevron(direction) {
+  return `<i data-lucide="${direction === "up" ? "chevron-up" : "chevron-down"}"></i>`;
 }
 
 document.addEventListener("DOMContentLoaded", init);
