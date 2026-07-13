@@ -20,6 +20,28 @@ const SUNCHEON_DEFAULT_TEAM_MAP = {
   "kim-boguk": [17]
 };
 
+const SACHEON_DEFAULT_TEAM_MAP = {
+  "kim-taeyoung": [1, 2],
+  "eom-takgyeong": [3, 4],
+  "park-seoyeon": [5],
+  "no-geonpyo": [6, 7],
+  "kim-hyeongil": [8, 9],
+  "bae-jinwoo": [10],
+  "yu-yeoncheol": [11, 12],
+  "yun-seojin": [13, 14],
+  "kim-hongmin": [15],
+  "kim-doyeon": [16],
+  "lee-cheonseo": [17],
+  "an-jihong": [18],
+  "kang-seunghyeon": [19],
+  "park-jiwon": [20],
+  "jeong-gukgyeong": [21],
+  "kim-sangyun": [22],
+  "jo-hyeonwoo": [23],
+  "no-jaeseung": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+  "lee-minyoung": [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+};
+
 let store = loadStore();
 let appStarted = false;
 let ui = {
@@ -364,7 +386,8 @@ const YANGYANG_DEFAULT_TEAM_MAP = {
 function seedDefaultRegionalTeams() {
   const defaultMaps = {
     "jeonnam-suncheon": SUNCHEON_DEFAULT_TEAM_MAP,
-    "gangwon-yangyang": YANGYANG_DEFAULT_TEAM_MAP
+    "gangwon-yangyang": YANGYANG_DEFAULT_TEAM_MAP,
+    "gyeongnam-sacheon": SACHEON_DEFAULT_TEAM_MAP
   };
   const regionId = ui.regionId;
   const teamMap = defaultMaps[regionId];
@@ -603,7 +626,7 @@ function renderParticipantBrowser(region) {
 function renderParticipantBrowserCard(region, entry) {
   const score = scoreParticipant(region.id, entry);
   const evaluation = getEvaluation(region.id, entry.participantId);
-  const teamSummary = entry.role === "supporter" ? getTeamSummary(region.id, entry.participantId) : "퍼실리테이터";
+  const teamSummary = getParticipantTeamLabel(region.id, entry);
   return `
     <button class="participant-browser-card" type="button" data-open-participant-report="${entry.participantId}">
       <span class="participant-team-main">${escapeHtml(teamSummary)}</span>
@@ -714,7 +737,7 @@ function getAllParticipantColumns() {
 function renderAllParticipantRow(region, entry, columns) {
   const score = scoreParticipant(region.id, entry);
   const evaluation = ensureEvaluation(region.id, entry.participantId);
-  const teamSummary = entry.role === "supporter" ? getTeamSummary(region.id, entry.participantId) : "퍼실리테이터";
+  const teamSummary = getParticipantTeamLabel(region.id, entry);
   return `
     <tr>
       <th class="all-sheet-person-col">
@@ -787,7 +810,7 @@ function renderParticipantReport(region) {
       <div class="participant-report-title">
         <p class="eyebrow">${escapeHtml(region.name)} · ${escapeHtml(DATA.roles[entry.role])}</p>
         <h3>${escapeHtml(entry.name)}</h3>
-        <p class="participant-report-team">${escapeHtml(entry.role === "supporter" ? getTeamSummary(region.id, entry.participantId) : "퍼실리테이터")}</p>
+        <p class="participant-report-team">${escapeHtml(getParticipantTeamLabel(region.id, entry))}</p>
         <p class="person-meta">${escapeHtml(entry.school)} · ${escapeHtml(entry.major)}</p>
       </div>
       <div class="participant-report-scorebox">
@@ -1143,7 +1166,7 @@ function renderJudgePill(region, entry, item) {
 
   const stateClass = getStateClass(item, state);
   const stateText = getStateText(item, state);
-  const sub = entry.role === "supporter" ? getTeamSummary(region.id, entry.participantId) : entry.school;
+  const sub = getParticipantSubtext(region, entry);
   return `
     <button
       class="judge-pill ${stateClass}"
@@ -1172,7 +1195,7 @@ function isProblemHandlingItem(item) {
 
 function renderLevelChoicePill(region, entry, item, state) {
   const currentCount = getItemCount(item, state);
-  const sub = entry.role === "supporter" ? getTeamSummary(region.id, entry.participantId) : entry.school;
+  const sub = getParticipantSubtext(region, entry);
   return `
     <div
       class="level-choice-pill"
@@ -1211,6 +1234,18 @@ function renderLevelChoicePill(region, entry, item, state) {
 function getTeamSummary(regionId, participantId) {
   const teams = getSortedTeams(regionId, participantId);
   return teams.length ? teams.join(" ") : "팀 미입력";
+}
+
+function getParticipantTeamLabel(regionId, entry) {
+  const teams = getSortedTeams(regionId, entry.participantId);
+  if (teams.length) return teams.join(" ");
+  return entry.role === "supporter" ? "팀 미입력" : "퍼실리테이터";
+}
+
+function getParticipantSubtext(region, entry) {
+  const teams = getSortedTeams(region.id, entry.participantId);
+  if (teams.length) return teams.join(" ");
+  return entry.role === "supporter" ? "팀 미입력" : entry.school;
 }
 
 function getSortedTeams(regionId, participantId) {
@@ -1264,7 +1299,7 @@ function renderManualBody(region, question, entries) {
 function renderManualScorePill(region, entry, cap) {
   const evaluation = ensureEvaluation(region.id, entry.participantId);
   const value = clampNumber(evaluation.overallScore || 0, 0, cap);
-  const sub = evaluation.overallNote ? "의견 있음" : entry.role === "supporter" ? getTeamSummary(region.id, entry.participantId) : entry.school;
+  const sub = evaluation.overallNote ? "의견 있음" : getParticipantSubtext(region, entry);
   return `
     <button
       class="judge-pill manual-score-pill ${value > 0 ? "is-y" : ""}"
@@ -1936,7 +1971,7 @@ function getRegionProgress(region) {
 }
 
 function getTeamAssignedCount(region) {
-  return getParticipantEntries(region).filter((entry) => entry.role === "supporter" && getTeams(region.id, entry.participantId).length).length;
+  return getParticipantEntries(region).filter((entry) => getTeams(region.id, entry.participantId).length).length;
 }
 
 function openEvaluatorModal(kind) {

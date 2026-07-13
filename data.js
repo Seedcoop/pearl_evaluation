@@ -1,5 +1,5 @@
 window.DINGADING_DATA = {
-  version: "2026-07-02",
+  version: "2026-07-13",
   roles: {
     supporter: "서포터즈",
     facilitator: "퍼실리테이터"
