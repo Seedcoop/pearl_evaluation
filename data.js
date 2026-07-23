@@ -1,5 +1,5 @@
 window.DINGADING_DATA = {
-  version: "2026-07-13",
+  version: "2026-07-23",
   roles: {
     supporter: "서포터즈",
     facilitator: "퍼실리테이터"
@@ -17,6 +17,7 @@ window.DINGADING_DATA = {
     "no-geonpyo": { name: "노건표", school: "성균관대학교", major: "컴퓨터교육과" },
     "no-jaeseung": { name: "노재승", school: "한국교원대", major: "물리교육과" },
     "park-doyun": { name: "박도윤", school: "명지대학교", major: "융합소프트웨어학부" },
+    "park-minjun": { name: "박민준", school: "", major: "" },
     "park-seoyeon": { name: "박서연", school: "가천대학교", major: "컴퓨터공학전공" },
     "park-jiwon": { name: "박지원", school: "건국대학교 서울", major: "컴퓨터공학부" },
     "bae-jinwoo": { name: "배진우", school: "울산대학교", major: "AI융합전공" },
@@ -153,18 +154,52 @@ window.DINGADING_DATA = {
       name: "익산",
       shortName: "익산",
       date: "",
-      venue: "명단 미확정",
-      pending: true,
-      participants: []
+      venue: "장소 미정",
+      participants: [
+        ["yun-seojin", "supporter"],
+        ["park-minjun", "supporter"],
+        ["an-jihong", "supporter"],
+        ["im-hayeon", "supporter"],
+        ["park-doyun", "supporter"],
+        ["lee-jisu", "supporter"],
+        ["lee-cheonseo", "supporter"],
+        ["yu-yeoncheol", "supporter"],
+        ["jeong-wooseong", "supporter"],
+        ["hwang-taegeon", "supporter"],
+        ["jo-hyeonwoo", "supporter"],
+        ["kim-boguk", "supporter"],
+        ["jeong-gukgyeong", "supporter"],
+        ["kim-namhun", "supporter"],
+        ["no-jaeseung", "facilitator"],
+        ["yun-juyoung", "facilitator"],
+        ["lee-minyoung", "facilitator"]
+      ]
     },
     {
       id: "gyeongju",
       name: "경주",
       shortName: "경주",
       date: "",
-      venue: "명단 미확정",
-      pending: true,
-      participants: []
+      venue: "장소 미정",
+      participants: [
+        ["an-jihong", "supporter"],
+        ["jo-seongjun", "supporter"],
+        ["lee-jimin", "supporter"],
+        ["park-jiwon", "supporter"],
+        ["im-hayeon", "supporter"],
+        ["lee-cheonseo", "supporter"],
+        ["park-minjun", "supporter"],
+        ["kim-namhun", "supporter"],
+        ["kim-hongmin", "supporter"],
+        ["lee-gyubin", "supporter"],
+        ["bae-jinwoo", "supporter"],
+        ["kim-hyeongil", "supporter"],
+        ["jeong-gukgyeong", "supporter"],
+        ["jo-hyeonwoo", "supporter"],
+        ["kim-minju", "facilitator"],
+        ["no-jaeseung", "facilitator"],
+        ["yun-juyoung", "facilitator"]
+      ]
     }
   ],
   rubrics: {

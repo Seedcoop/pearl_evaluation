@@ -42,6 +42,46 @@ const SACHEON_DEFAULT_TEAM_MAP = {
   "lee-minyoung": [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
 };
 
+const IKSAN_DEFAULT_TEAM_MAP = {
+  "yun-seojin": [1, 2],
+  "park-minjun": [3, 4],
+  "an-jihong": [5, 6],
+  "im-hayeon": [7, 8],
+  "park-doyun": [9, 10],
+  "lee-jisu": [11],
+  "lee-cheonseo": [12],
+  "yu-yeoncheol": [13],
+  "jeong-wooseong": [14],
+  "hwang-taegeon": [15],
+  "jo-hyeonwoo": [16],
+  "kim-boguk": [17],
+  "jeong-gukgyeong": [18],
+  "kim-namhun": [19],
+  "no-jaeseung": [1, 2, 3, 4, 5, 6],
+  "yun-juyoung": [7, 8, 9, 10, 11, 12],
+  "lee-minyoung": [13, 14, 15, 16, 17, 18, 19]
+};
+
+const GYEONGJU_DEFAULT_TEAM_MAP = {
+  "an-jihong": [1],
+  "jo-seongjun": [2],
+  "lee-jimin": [3],
+  "park-jiwon": [4],
+  "im-hayeon": [5, 6],
+  "lee-cheonseo": [7, 8],
+  "park-minjun": [9, 10],
+  "kim-namhun": [11, 12],
+  "kim-hongmin": [13, 14],
+  "lee-gyubin": [15],
+  "bae-jinwoo": [16],
+  "kim-hyeongil": [17],
+  "jeong-gukgyeong": [18],
+  "jo-hyeonwoo": [19],
+  "kim-minju": [1, 2, 3, 4, 5, 6],
+  "no-jaeseung": [7, 8, 9, 10, 11, 12],
+  "yun-juyoung": [13, 14, 15, 16, 17, 18, 19]
+};
+
 let store = loadStore();
 let appStarted = false;
 let ui = {
@@ -387,7 +427,9 @@ function seedDefaultRegionalTeams() {
   const defaultMaps = {
     "jeonnam-suncheon": SUNCHEON_DEFAULT_TEAM_MAP,
     "gangwon-yangyang": YANGYANG_DEFAULT_TEAM_MAP,
-    "gyeongnam-sacheon": SACHEON_DEFAULT_TEAM_MAP
+    "gyeongnam-sacheon": SACHEON_DEFAULT_TEAM_MAP,
+    "iksan": IKSAN_DEFAULT_TEAM_MAP,
+    "gyeongju": GYEONGJU_DEFAULT_TEAM_MAP
   };
   const regionId = ui.regionId;
   const teamMap = defaultMaps[regionId];
@@ -552,7 +594,7 @@ function renderPlanSummary(region) {
   $("#plan-region-summary").innerHTML = `
     <div class="summary-main">
       <strong>${escapeHtml(region.venue || "장소 미정")}</strong>
-      <span class="region-meta">${region.sourceFile ? escapeHtml(region.sourceFile) : "명단 업데이트 대기"}</span>
+      <span class="region-meta">${region.sourceFile ? escapeHtml(region.sourceFile) : (region.date ? formatDate(region.date) : "일정 미정")}</span>
     </div>
     <div class="metric-grid">
       <div class="metric"><span>전체</span><strong>${entries.length}</strong></div>
