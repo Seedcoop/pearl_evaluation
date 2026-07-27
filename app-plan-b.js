@@ -67,12 +67,12 @@ const GYEONGJU_DEFAULT_TEAM_MAP = {
   "jo-seongjun": [2],
   "lee-jimin": [3],
   "park-jiwon": [4],
-  "im-hayeon": [5, 6],
-  "lee-cheonseo": [7, 8],
-  "park-minjun": [9, 10],
-  "kim-namhun": [11, 12],
-  "kim-hongmin": [13, 14],
-  "lee-gyubin": [15],
+  "park-minjun": [5],
+  "im-hayeon": [6, 11],
+  "lee-cheonseo": [7, 12],
+  "kim-namhun": [8, 13],
+  "lee-gyubin": [9, 14],
+  "kim-hongmin": [10, 15],
   "bae-jinwoo": [16],
   "kim-hyeongil": [17],
   "jeong-gukgyeong": [18],
@@ -438,8 +438,11 @@ function seedDefaultRegionalTeams() {
   let changed = false;
   Object.keys(teamMap).forEach((participantId) => {
     const key = getEvalKey(regionId, participantId);
-    if (Object.prototype.hasOwnProperty.call(store.teams, key) && store.teams[key].length) return;
-    store.teams[key] = teamMap[participantId].map((teamNo) => `${teamNo}팀`);
+    const defaultTeams = teamMap[participantId].map((teamNo) => `${teamNo}팀`);
+    const hasExistingTeams = Object.prototype.hasOwnProperty.call(store.teams, key) && store.teams[key].length;
+    if (regionId !== "gyeongju" && hasExistingTeams) return;
+    if (JSON.stringify(store.teams[key] || []) === JSON.stringify(defaultTeams)) return;
+    store.teams[key] = defaultTeams;
     changed = true;
   });
 
